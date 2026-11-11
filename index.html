@@ -1,0 +1,75 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Semantic Word Search — MVP</title>
+<style>
+:root{color-scheme:light dark;--bg:#f5f4f0;--surface:#fff;--soft:#eeede8;--text:#242424;--muted:#70706c;--border:#deddd6}
+@media(prefers-color-scheme:dark){:root{--bg:#191a1c;--surface:#232528;--soft:#2d3034;--text:#eee;--muted:#aaa;--border:#414348}}
+*{box-sizing:border-box}body{margin:0;padding:32px 16px;background:var(--bg);color:var(--text);font:15px/1.5 system-ui,sans-serif}
+main{max-width:620px;margin:auto}.app{background:var(--surface);border:1px solid var(--border);border-radius:18px;padding:24px;box-shadow:0 8px 28px #0000000d}
+h1{font-size:24px;margin:0 0 6px;letter-spacing:-.03em}.intro,.meta,.muted{color:var(--muted)}.intro{margin:0 0 22px}
+.tabs{display:flex;gap:6px;padding:4px;background:var(--soft);border-radius:10px}.tab{flex:1;border:0;border-radius:7px;padding:9px 12px;background:transparent;color:var(--muted);font:inherit;cursor:pointer}.tab[aria-selected=true]{background:var(--surface);color:var(--text);box-shadow:0 1px 3px #0002}
+label{display:block;margin:20px 0 6px;font-weight:600}select{width:100%;padding:11px 12px;border:1px solid var(--border);border-radius:9px;background:var(--surface);color:var(--text);font:inherit}
+.head{display:flex;justify-content:space-between;align-items:baseline;gap:12px;margin:22px 0 10px}h2{margin:0;font-size:16px}.meta{font-size:12px}
+.result,.word{background:var(--soft);border-radius:10px;padding:13px 14px;margin-top:9px}.result-title,.word strong{font-weight:650}.sense,.match{font-size:12px;color:var(--muted)}.match{margin-top:7px}
+.word{display:flex;justify-content:space-between;gap:12px;align-items:center}.empty{color:var(--muted);padding:16px 2px}hr{border:0;border-top:1px solid var(--border);margin:20px 0 12px}footer{font-size:12px;color:var(--muted)}[hidden]{display:none!important}
+@media(max-width:480px){body{padding:14px 10px}.app{padding:18px}h1{font-size:21px}}
+</style>
+</head>
+<body><main><section class="app" aria-label="Semantic word search demo">
+<h1>Semantic Word Search</h1><p class="intro">Explore curated associations in a small primary vocabulary.</p>
+<div class="tabs" role="tablist" aria-label="View">
+<button class="tab" id="searchTab" role="tab" aria-selected="true">Search</button>
+<button class="tab" id="listTab" role="tab" aria-selected="false">Primary word list</button>
+</div>
+<section id="searchView" role="tabpanel">
+<label for="query">Search word</label><select id="query"></select>
+<div class="head"><h2>Results</h2><span class="meta" id="resultCount"></span></div><div id="results" aria-live="polite"></div>
+</section>
+<section id="listView" role="tabpanel" hidden>
+<div class="head"><h2>Primary vocabulary</h2><span class="meta" id="wordCount"></span></div><div id="wordList"></div>
+</section>
+<hr><footer id="summary"></footer>
+</section></main>
+<script>
+const senses=[
+{word:"water",number:1,definition:"H₂O as a substance.",associations:["liquid","wet","drink","thirst","rain","river","ocean","lake","ice","steam","tap","flood","swimming","bath","shower","hydration","cloud","wave","puddle","pipe"]},
+{word:"water",number:2,definition:"To supply plants or land with water.",associations:["garden","plant","soil","crops","irrigation","hose","sprinkler","farmer","drought"]},
+{word:"panel",number:1,definition:"A flat or rectangular section of a surface.",associations:["board","sheet","surface","wall","door","ceiling","floor","wood","metal","glass","siding"]},
+{word:"panel",number:2,definition:"A group of people assembled for discussion or judgment.",associations:["committee","jury","discussion","debate","judges","experts","conference","interview","review","television","candidates","questions"]},
+{word:"salmon",number:1,definition:"A fish belonging to the salmon family.",associations:["fish","trout","ocean","river","seafood","fishing","roe","sushi","pink","migration","net","scales","gills","bear","stream","spawning","freshwater"]}
+];
+const primaryWords=[{word:"water",count:2},{word:"panel",count:2},{word:"salmon",count:1}];
+const querySelect=document.getElementById("query"),results=document.getElementById("results");
+const queryWords=[...new Set(senses.flatMap(s=>s.associations))].sort();
+queryWords.forEach(word=>{const option=document.createElement("option");option.value=word;option.textContent=word;querySelect.append(option)});
+querySelect.value="river";
+function renderResults(){
+ const query=querySelect.value,matches=senses.filter(s=>s.associations.includes(query));
+ document.getElementById("resultCount").textContent=`${matches.length} matching ${matches.length===1?"sense":"senses"}`;
+ results.replaceChildren();
+ if(!matches.length){const p=document.createElement("p");p.className="empty";p.textContent="No matching entries.";results.append(p);return}
+ matches.forEach(m=>{const card=document.createElement("article");card.className="result";
+ const title=document.createElement("div");title.className="result-title";title.textContent=m.word;
+ const sense=document.createElement("div");sense.className="sense";sense.textContent=`Sense ${m.number}`;
+ const definition=document.createElement("div");definition.textContent=m.definition;
+ const provenance=document.createElement("div");provenance.className="match";provenance.textContent=`Matched through: ${query}`;
+ card.append(title,sense,definition,provenance);results.append(card)});
+}
+function renderWordList(){
+ document.getElementById("wordCount").textContent=`${primaryWords.length} words`;
+ const list=document.getElementById("wordList");list.replaceChildren();
+ primaryWords.forEach(entry=>{const row=document.createElement("div");row.className="word";
+ const name=document.createElement("strong");name.textContent=`${entry.word} (${entry.count})`;
+ const count=document.createElement("span");count.className="meta";count.textContent=`${entry.count} defined ${entry.count===1?"sense":"senses"}`;
+ row.append(name,count);list.append(row)});
+}
+function setView(view){const search=view==="search";document.getElementById("searchView").hidden=!search;document.getElementById("listView").hidden=search;document.getElementById("searchTab").setAttribute("aria-selected",String(search));document.getElementById("listTab").setAttribute("aria-selected",String(!search))}
+document.getElementById("searchTab").addEventListener("click",()=>setView("search"));
+document.getElementById("listTab").addEventListener("click",()=>setView("list"));
+querySelect.addEventListener("change",renderResults);
+renderResults();renderWordList();
+document.getElementById("summary").textContent=`${primaryWords.length} primary words · ${senses.length} defined senses · ${queryWords.length} selectable association words`;
+</script></body></html>
